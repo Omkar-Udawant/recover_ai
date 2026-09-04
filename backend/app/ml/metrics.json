@@ -1,0 +1,25 @@
+{
+  "model_version": "v1.0-xgb",
+  "total_samples": 4846,
+  "test_samples": 970,
+  "accuracy": 0.6691,
+  "precision": 0.6983,
+  "recall": 0.8325,
+  "f1_score": 0.7596,
+  "roc_auc": 0.6808,
+  "confusion_matrix": {
+    "true_negative": 142,
+    "false_positive": 219,
+    "false_negative": 102,
+    "true_positive": 507
+  },
+  "feature_importances": {
+    "amount": 0.1417,
+    "tenure_days": 0.0954,
+    "engagement_score": 0.1744,
+    "previous_successful_recoveries": 0.2386,
+    "days_overdue": 0.1663,
+    "failure_reason_code": 0.084,
+    "event_type_code": 0.0997
+  }
+}

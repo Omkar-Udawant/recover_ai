@@ -1,0 +1,24 @@
+# Production overlay: managed Postgres, no bind-mounted source, single migration job.
+# Usage: docker compose -f docker-compose.yml -f infra/docker-compose.prod.yml up -d --build
+services:
+  backend:
+    volumes: []
+    environment:
+      - ENVIRONMENT=production
+      - LOG_LEVEL=WARNING
+    deploy:
+      replicas: 2
+  frontend:
+    volumes: []
+  migrate:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    command: alembic upgrade head
+    environment:
+      - DATABASE_URL=${DATABASE_URL:?Set DATABASE_URL to managed Postgres}
+      - JWT_SECRET=${JWT_SECRET:?Set JWT_SECRET in secret store}
+    depends_on:
+      db:
+        condition: service_healthy
+    profiles: ["tools"]
