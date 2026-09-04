@@ -195,6 +195,9 @@ class CaseService:
                 message_content=a.message_content,
                 payment_link=a.payment_link,
                 action_status=a.action_status,
+                template=a.template,
+                lang=a.lang,
+                cost_paise=a.cost_paise,
                 created_at=a.created_at,
             )
             for a in sorted(case.recovery_actions, key=lambda x: x.created_at, reverse=True)

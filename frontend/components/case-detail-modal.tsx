@@ -45,6 +45,12 @@ export function CaseDetailModal({
   const [runningAgent, setRunningAgent] = useState<boolean>(false);
   const [agentResult, setAgentResult] = useState<AgentRunResponse | null>(null);
   const [copiedLink, setCopiedLink] = useState<boolean>(false);
+  const [emailTo, setEmailTo] = useState<string>("");
+  const [emailBusy, setEmailBusy] = useState<boolean>(false);
+  const [emailMsg, setEmailMsg] = useState<string | null>(null);
+  const [voiceLang, setVoiceLang] = useState<string>("Hinglish");
+  const [voiceBusy, setVoiceBusy] = useState<boolean>(false);
+  const [voiceScript, setVoiceScript] = useState<string | null>(null);
 
   const fetchDetail = async () => {
     if (!caseId) return;
@@ -63,8 +69,14 @@ export function CaseDetailModal({
     if (caseId) {
       fetchDetail();
       setAgentResult(null);
+      setVoiceScript(null);
+      setEmailMsg(null);
     }
   }, [caseId]);
+
+  useEffect(() => {
+    if (detail?.customer?.email) setEmailTo(detail.customer.email);
+  }, [detail]);
 
   const handleRunAgent = async () => {
     if (!detail) return;
@@ -94,6 +106,56 @@ export function CaseDetailModal({
     navigator.clipboard.writeText(text);
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 2000);
+  };
+
+  const speak = (text: string, lang: string) => {
+    try {
+      const synth = window.speechSynthesis;
+      synth.cancel();
+      const utter = new SpeechSynthesisUtterance(text);
+      const voices = synth.getVoices();
+      const match =
+        voices.find((v) => (lang === "Hinglish" ? v.lang.startsWith("hi") : v.lang.startsWith("en"))) ??
+        voices.find((v) => v.lang.startsWith("en"));
+      if (match) utter.voice = match;
+      utter.lang = lang === "Hinglish" ? "hi-IN" : "en-IN";
+      utter.rate = 0.95;
+      synth.speak(utter);
+    } catch (err) {
+      console.error("TTS failed", err);
+    }
+  };
+
+  const handleSendEmail = async () => {
+    if (!detail) return;
+    setEmailBusy(true);
+    setEmailMsg(null);
+    try {
+      const res = await api.sendEmail({ case_id: detail.id, tone: agentTone, to_email: emailTo || undefined });
+      setEmailMsg(`Sent to ${res.to} · ${res.template}`);
+      await fetchDetail();
+      if (onCaseUpdated) onCaseUpdated();
+    } catch (err: any) {
+      setEmailMsg(err?.response?.data?.detail ?? "Email send failed.");
+    } finally {
+      setEmailBusy(false);
+    }
+  };
+
+  const handleVoice = async () => {
+    if (!detail) return;
+    setVoiceBusy(true);
+    try {
+      const res = await api.logVoice({ case_id: detail.id, lang: voiceLang });
+      setVoiceScript(res.script);
+      speak(res.script, res.lang);
+      await fetchDetail();
+      if (onCaseUpdated) onCaseUpdated();
+    } catch (err) {
+      console.error("Voice log failed", err);
+    } finally {
+      setVoiceBusy(false);
+    }
   };
 
   if (!caseId) return null;
@@ -252,6 +314,72 @@ export function CaseDetailModal({
                     </Button>
                   </div>
 
+                  {/* Real outreach: email + voice */}
+                  <div className="pt-3 border-t border-slate-800/60 space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                      <input
+                        type="email"
+                        value={emailTo}
+                        onChange={(e) => setEmailTo(e.target.value)}
+                        placeholder="recipient email"
+                        className="flex-1 rounded-md border border-slate-700 bg-slate-950 px-2.5 py-1.5 text-xs text-white placeholder:text-slate-500"
+                      />
+                      <Button
+                        onClick={handleSendEmail}
+                        disabled={emailBusy}
+                        variant="outline"
+                        size="sm"
+                        className="h-8 text-xs border-slate-700 text-slate-200 hover:bg-slate-800"
+                      >
+                        <Mail className="h-3.5 w-3.5 mr-1.5" />
+                        {emailBusy ? "Sending…" : "Send real email"}
+                      </Button>
+                    </div>
+                    {emailMsg && <p className="text-[11px] text-slate-400 font-mono">{emailMsg}</p>}
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                      <div className="flex rounded-lg border border-slate-800 bg-slate-950 p-0.5">
+                        {["EN", "Hinglish"].map((lang) => (
+                          <button
+                            key={lang}
+                            onClick={() => setVoiceLang(lang)}
+                            className={`px-2.5 py-1 text-xs rounded-md transition-colors ${
+                              voiceLang === lang
+                                ? "bg-emerald-600 text-white font-semibold"
+                                : "text-slate-400 hover:text-slate-200"
+                            }`}
+                          >
+                            {lang}
+                          </button>
+                        ))}
+                      </div>
+                      <Button
+                        onClick={handleVoice}
+                        disabled={voiceBusy}
+                        variant="outline"
+                        size="sm"
+                        className="h-8 text-xs border-slate-700 text-slate-200 hover:bg-slate-800"
+                      >
+                        <Phone className="h-3.5 w-3.5 mr-1.5" />
+                        {voiceBusy ? "Logging…" : "Hear + log voice call"}
+                      </Button>
+                      {voiceScript && (
+                        <Button
+                          onClick={() => speak(voiceScript, voiceLang)}
+                          variant="outline"
+                          size="sm"
+                          className="h-8 text-xs border-slate-700 text-slate-200 hover:bg-slate-800"
+                        >
+                          Replay audio
+                        </Button>
+                      )}
+                    </div>
+                    {voiceScript && (
+                      <p className="text-[11px] text-slate-400 font-mono leading-relaxed border-l-2 border-emerald-500/50 pl-2">
+                        {voiceScript}
+                      </p>
+                    )}
+                  </div>
+
                   {/* Agent Output Reveal */}
                   {agentResult && (
                     <div className="mt-4 p-4 rounded-lg bg-slate-950 border border-blue-500/30 space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
@@ -346,6 +474,15 @@ export function CaseDetailModal({
                           <p className="text-slate-300 leading-relaxed font-mono text-[11px]">
                             {act.message_content}
                           </p>
+                          {(act.template || act.lang || act.cost_paise != null) && (
+                            <div className="flex flex-wrap items-center gap-1.5 pt-1 font-mono text-[10px] text-slate-500">
+                              {act.template && <span className="px-1.5 py-0.5 rounded border border-slate-800">{act.template}</span>}
+                              {act.lang && (
+                                <span className="px-1.5 py-0.5 rounded-full border border-emerald-900/60 text-emerald-300">{act.lang}</span>
+                              )}
+                              {act.cost_paise != null && <span>₹{(act.cost_paise / 100).toFixed(2)}</span>}
+                            </div>
+                          )}
                         </div>
 
                         {act.payment_link && (

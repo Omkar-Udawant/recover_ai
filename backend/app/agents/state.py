@@ -30,6 +30,8 @@ class RecoveryState(TypedDict):
     channel_reason: Optional[str]
     message: Optional[str]
     payment_link: Optional[str]
+    payment_link_id: Optional[str]
+    payment_order_id: Optional[str]
     case_id: Optional[str]
     case_status: str
     error: Optional[str]

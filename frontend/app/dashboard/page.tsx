@@ -26,7 +26,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/lib/api-client";
-import { BatchRunResponse, DashboardData, HonestyData } from "@/lib/types";
+import { BatchRunResponse, DashboardData, HonestyData, PaymentLinkItem } from "@/lib/types";
 
 const REASON_LABELS: Record<string, string> = {
   quiet_hours: "Quiet hours",
@@ -46,14 +46,16 @@ export default function DashboardPage() {
   const [batchDry, setBatchDry] = useState<boolean>(true);
   const [batchRunning, setBatchRunning] = useState<boolean>(false);
   const [batchResult, setBatchResult] = useState<BatchRunResponse | null>(null);
+  const [links, setLinks] = useState<PaymentLinkItem[]>([]);
 
   const fetchDashboard = async () => {
     setLoading(true);
     setError(null);
     try {
-      const [res, hon] = await Promise.all([api.getDashboard(), api.getHonesty()]);
+      const [res, hon, pl] = await Promise.all([api.getDashboard(), api.getHonesty(), api.getPaymentLinks(8)]);
       setData(res);
       setHonesty(hon);
+      setLinks(pl);
     } catch (err: any) {
       console.error("Dashboard fetch error", err);
       setError("Failed to load dashboard data from API.");
@@ -313,6 +315,61 @@ export default function DashboardPage() {
                   </div>
                 </CardContent>
               )}
+            </Card>
+
+            {/* Live payment-link evidence */}
+            <Card className="mb-8 bg-slate-900/60 border-slate-800 shadow-md">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base text-white">Live payment links — evidence, not screenshots</CardTitle>
+                <CardDescription className="text-xs text-slate-400">
+                  Every link the agent minted in Razorpay test mode, with its live status. Empty until test keys are configured.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pt-2 overflow-x-auto">
+                {links.length === 0 ? (
+                  <p className="text-xs text-slate-500">
+                    No payment links yet. Add Razorpay test keys and run the agent — links appear here with Created / Paid / Cancelled / Expired statuses.
+                  </p>
+                ) : (
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="text-left text-[11px] uppercase tracking-wider text-slate-500 border-b border-slate-800">
+                        <th className="py-2 pr-3 font-semibold">Payment link id</th>
+                        <th className="py-2 pr-3 font-semibold">Amount</th>
+                        <th className="py-2 pr-3 font-semibold">Link</th>
+                        <th className="py-2 pr-3 font-semibold">Status</th>
+                        <th className="py-2 font-semibold">Created</th>
+                      </tr>
+                    </thead>
+                    <tbody className="tabular-nums">
+                      {links.map((l) => (
+                        <tr key={l.link_id} className="border-b border-slate-800/50 text-slate-300">
+                          <td className="py-2 pr-3 font-mono text-[11px]">{l.link_id}</td>
+                          <td className="py-2 pr-3">₹{l.amount.toLocaleString("en-IN")}</td>
+                          <td className="py-2 pr-3 font-mono text-[11px]">
+                            {l.short_url ? (
+                              <a href={l.short_url} target="_blank" rel="noreferrer" className="text-emerald-400 hover:underline">
+                                {l.short_url.replace("https://", "")}
+                              </a>
+                            ) : (
+                              <span className="text-slate-500">—</span>
+                            )}
+                          </td>
+                          <td className="py-2 pr-3">
+                            <Badge
+                              variant={l.status === "paid" ? "success" : l.status === "cancelled" || l.status === "expired" ? "destructive" : "warning"}
+                              className="text-[10px] capitalize"
+                            >
+                              {l.status}
+                            </Badge>
+                          </td>
+                          <td className="py-2 text-slate-500">{l.created_at ? new Date(l.created_at).toLocaleString() : "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </CardContent>
             </Card>
 
             {/* Row 1 Charts: Trend (8 cols) & Funnel (4 cols) */}

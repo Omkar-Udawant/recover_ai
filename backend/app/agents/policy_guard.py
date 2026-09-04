@@ -82,11 +82,17 @@ async def evaluate_policy(
             if hours_since < settings.POLICY_COOLDOWN_HOURS:
                 return False, "cooldown", details
 
-    # 3. Expected-value gate: refuse when the outreach costs more than it can earn.
-    expected_value = recovery_probability * amount
-    details["expected_value_inr"] = round(expected_value, 2)
-    details["min_expected_value_inr"] = settings.POLICY_MIN_EXPECTED_VALUE_INR
-    if expected_value < settings.POLICY_MIN_EXPECTED_VALUE_INR:
+    # 3. Expected-value gate: p × amount × margin − cost ≥ floor.
+    # Margin, not the gross amount: recovering a rupee is worth its margin.
+    margin = settings.POLICY_CONTRIBUTION_MARGIN
+    cost = settings.POLICY_COST_PER_ATTEMPT_INR
+    floor = settings.POLICY_FLOOR_INR
+    expected_net = recovery_probability * amount * margin - cost
+    details["contribution_margin"] = margin
+    details["cost_per_attempt_inr"] = cost
+    details["expected_net_inr"] = round(expected_net, 2)
+    details["floor_inr"] = floor
+    if expected_net < floor:
         return False, "low_expected_value", details
 
     # 4. Quiet hours (IST): no customer-facing outreach at night.

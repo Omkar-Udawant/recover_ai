@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bot, FileText, Layers, LayoutDashboard, Zap } from "lucide-react";
+import { Bot, FileText, Layers, LayoutDashboard, ShieldCheck, Zap } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
@@ -11,8 +11,10 @@ export function Navbar() {
   const pathname = usePathname();
 
   const links = [
-    { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/cases", label: "Recovery Cases", icon: Layers },
+    { href: "/", label: "Home", icon: Bot },
+    { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
+    { href: "/cases", label: "Cases", icon: Layers },
+    { href: "/policy", label: "Policy", icon: ShieldCheck },
   ];
   const signOut = async () => {
     try { window.localStorage.removeItem("recoverai_demo_token"); } catch { /* noop */ }
@@ -64,6 +66,10 @@ export function Navbar() {
             <span>8-Agent AI Online</span>
           </Badge>
 
+          <Badge variant="outline" className="hidden md:inline-flex border-emerald-500/30 text-emerald-300 text-[11px] font-mono">
+            Track 03
+          </Badge>
+
           <a
             href="http://localhost:8000/docs"
             target="_blank"
@@ -77,7 +83,7 @@ export function Navbar() {
           </a>
 
           <Link href="/cases">
-            <Button size="sm" className="bg-blue-600 hover:bg-blue-500 text-white text-xs shadow-md shadow-blue-600/20">
+            <Button size="sm" className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs shadow-md shadow-emerald-600/20">
               <Zap className="h-3.5 w-3.5 mr-1" />
               Live Cases
             </Button>

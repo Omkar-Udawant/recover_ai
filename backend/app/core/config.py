@@ -25,8 +25,11 @@ class Settings(BaseSettings):
     # to act when outreach is wasteful, duplicative, or non-compliant.
     POLICY_MAX_ATTEMPTS_PER_CASE_30D: int = 3
     POLICY_COOLDOWN_HOURS: int = 24
-    POLICY_MIN_EXPECTED_VALUE_INR: float = 120.0
+    # Expected-value gate: p × amount × margin − cost ≥ floor.
+    # Margin, not gross: recovering a rupee is worth its contribution margin.
+    POLICY_CONTRIBUTION_MARGIN: float = 0.4
     POLICY_COST_PER_ATTEMPT_INR: float = 1.5
+    POLICY_FLOOR_INR: float = 45.0
     POLICY_QUIET_HOURS_ENFORCE: bool = True
     POLICY_QUIET_START_HOUR_IST: int = 21
     POLICY_QUIET_END_HOUR_IST: int = 9
@@ -38,6 +41,13 @@ class Settings(BaseSettings):
 
     # AI / LLM Integrations
     GEMINI_API_KEY: str = ""
+
+    # Outbound email (SMTP — Gmail App Password for the demo)
+    SMTP_HOST: str = "smtp.gmail.com"
+    SMTP_PORT: int = 465
+    SMTP_USER: str = ""
+    SMTP_PASS: str = ""
+    SMTP_FROM_NAME: str = "RecoverAI"
 
     # Payment Gateway Integrations
     RAZORPAY_KEY_ID: str = ""

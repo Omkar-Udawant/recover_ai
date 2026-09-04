@@ -31,6 +31,9 @@ class RecoveryActionItem(BaseModel):
     message_content: Optional[str] = None
     payment_link: Optional[str] = None
     action_status: Optional[str] = None
+    template: Optional[str] = None
+    lang: Optional[str] = None
+    cost_paise: Optional[int] = None
     created_at: datetime
 
 

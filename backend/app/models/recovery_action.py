@@ -28,6 +28,9 @@ class RecoveryAction(Base):
     action_status: Mapped[Optional[str]] = mapped_column(
         String(20), nullable=True
     )  # sent | opened | clicked | paid | failed
+    template: Mapped[Optional[str]] = mapped_column(String(60), nullable=True)
+    lang: Mapped[Optional[str]] = mapped_column(String(12), nullable=True)
+    cost_paise: Mapped[Optional[int]] = mapped_column(nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.agents.state import RecoveryState
 from app.models import AuditLog, Prediction, RecoveryAction, RecoveryCase
-from app.models.intelligence import AgentExecution, CustomerSentiment, Recommendation
+from app.models.intelligence import AgentExecution, CustomerSentiment, PaymentAttempt, Recommendation
 
 
 def run(state: RecoveryState) -> RecoveryState:
@@ -170,6 +170,21 @@ async def persist_recovery_async(db: AsyncSession, state: RecoveryState) -> str:
                 score=float(state.get("sentiment_score") or 0.5),
                 churn_risk_score=float(state.get("churn_risk_score") or 0.5),
                 source_text=f"agent_pipeline:{state.get('failure_reason') or ''}"[:500],
+            )
+        )
+
+    # Payment reconciliation row when a real link was minted
+    if state.get("payment_link_id") and state.get("payment_link"):
+        db.add(
+            PaymentAttempt(
+                id=uuid.uuid4(),
+                case_id=case_id,
+                razorpay_link_id=str(state.get("payment_link_id")),
+                razorpay_order_id=str(state.get("payment_order_id") or "") or None,
+                amount=amount,
+                currency=state.get("currency") or "INR",
+                payment_status="created",
+                short_url=str(state.get("payment_link")),
             )
         )
 

@@ -2,8 +2,8 @@ import hashlib
 import hmac
 import json
 from datetime import datetime, timezone
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
+from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_current_user
 from app.api.deps import get_db
@@ -17,13 +17,38 @@ from app.schemas.common import TokenPayload
 
 router = APIRouter(tags=["Payment Links"])
 
+@router.get("/payment-links")
+async def list_payment_links(
+    limit: int = Query(20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+    current_user: TokenPayload = Depends(get_current_user),
+):
+    """Evidence table: recent Razorpay payment-link attempts with live statuses."""
+    res = await db.execute(
+        select(PaymentAttempt).order_by(desc(PaymentAttempt.created_at)).limit(limit)
+    )
+    return [
+        {
+            "link_id": a.razorpay_link_id,
+            "short_url": a.short_url,
+            "order_id": a.razorpay_order_id,
+            "case_id": str(a.case_id),
+            "amount": float(a.amount),
+            "currency": a.currency,
+            "status": a.payment_status,
+            "reference": a.payment_reference,
+            "created_at": a.created_at.isoformat() if a.created_at else None,
+        }
+        for a in res.scalars().all()
+    ]
+
 @router.post("/payment-link", response_model=PaymentLinkResponse, status_code=status.HTTP_201_CREATED)
 async def payment_link(payload: PaymentLinkRequest, db: AsyncSession = Depends(get_db), current_user: TokenPayload = Depends(get_current_user)):
     case = await db.get(RecoveryCase, payload.case_id)
     if not case:
         raise HTTPException(status_code=404, detail="Recovery case was not found")
     result = create_payment_link(payload.amount, payload.currency.upper(), payload.customer_name, payload.customer_email, payload.customer_phone, f"RecoverAI recovery case {case.id}")
-    db.add(PaymentAttempt(case_id=case.id, razorpay_link_id=result["id"], razorpay_order_id=result.get("order_id"), amount=payload.amount, currency=payload.currency.upper(), payment_status=result["status"]))
+    db.add(PaymentAttempt(case_id=case.id, razorpay_link_id=result["id"], razorpay_order_id=result.get("order_id"), amount=payload.amount, currency=payload.currency.upper(), payment_status=result["status"], short_url=result["short_url"]))
     await db.commit()
     return PaymentLinkResponse(payment_link=result["short_url"], order_id=result.get("order_id"), amount=payload.amount, status=result["status"], link_id=result["id"], currency=payload.currency.upper())
 

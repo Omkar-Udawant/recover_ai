@@ -35,6 +35,7 @@ class PaymentAttempt(Base):
     payment_reference: Mapped[Optional[str]] = mapped_column(String(100))
     payment_time: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    short_url: Mapped[Optional[str]] = mapped_column(String(255))
 
 
 class CustomerSentiment(Base):

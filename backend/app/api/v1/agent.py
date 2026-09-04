@@ -62,6 +62,8 @@ async def run_recovery_agent(
         "channel_reason": None,
         "message": None,
         "payment_link": None,
+        "payment_link_id": None,
+        "payment_order_id": None,
         "case_id": payload.case_id,
         "case_status": "pending",
         "error": None,
@@ -250,6 +252,8 @@ async def _build_state_for_case(
         "channel_reason": None,
         "message": None,
         "payment_link": None,
+        "payment_link_id": None,
+        "payment_order_id": None,
         "case_id": str(rc.id),
         "case_status": rc.status,
         "error": None,
@@ -293,7 +297,7 @@ async def run_recovery_batch(
                 )
             else:
                 allowed, reason, details = True, "ok", {}
-            expected = prob * amount
+            expected = prob * amount * settings.POLICY_CONTRIBUTION_MARGIN - settings.POLICY_COST_PER_ATTEMPT_INR
             if not allowed:
                 refused += 1
                 refusals_by_reason[reason] = refusals_by_reason.get(reason, 0) + 1
@@ -327,7 +331,7 @@ async def run_recovery_batch(
                 await db.rollback()
                 raise
             acted += 1
-            projected_gross += float(final_state.get("recovery_probability") or prob) * amount
+            projected_gross += float(final_state.get("recovery_probability") or prob) * amount * settings.POLICY_CONTRIBUTION_MARGIN
             results.append(BatchCaseResult(
                 case_id=str(rc.id), decision="acted",
                 risk_level=final_state.get("risk_level") or "medium",
@@ -347,6 +351,24 @@ async def run_recovery_batch(
         projected_net_inr=projected_net,
         results=results,
     )
+
+
+@router.get("/policy")
+async def policy_config(
+    current_user: TokenPayload = Depends(get_current_user),
+):
+    """Live guardrail configuration powering the refusal engine."""
+    return {
+        "gate": "p × amount × margin − cost ≥ floor",
+        "contribution_margin": settings.POLICY_CONTRIBUTION_MARGIN,
+        "cost_per_attempt_inr": settings.POLICY_COST_PER_ATTEMPT_INR,
+        "floor_inr": settings.POLICY_FLOOR_INR,
+        "max_attempts_per_case_30d": settings.POLICY_MAX_ATTEMPTS_PER_CASE_30D,
+        "cooldown_hours": settings.POLICY_COOLDOWN_HOURS,
+        "quiet_hours_enforce": settings.POLICY_QUIET_HOURS_ENFORCE,
+        "quiet_window_ist": f"{settings.POLICY_QUIET_START_HOUR_IST:02d}:00–{settings.POLICY_QUIET_END_HOUR_IST:02d}:00",
+        "rules": ["already_resolved", "attempt_cap", "cooldown", "low_expected_value", "quiet_hours"],
+    }
 
 
 @router.get("/honesty")

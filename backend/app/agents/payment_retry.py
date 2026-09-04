@@ -27,9 +27,13 @@ def run(state: RecoveryState) -> RecoveryState:
     except Exception as exc:
         # Record provider failure explicitly; downstream nodes must handle missing link.
         state["payment_link"] = ""
+        state["payment_link_id"] = ""
+        state["payment_order_id"] = ""
         state["error"] = f"payment_link_failed: {getattr(exc, 'detail', str(exc))}"
         return state
 
     state["payment_link"] = link_data.get("short_url", "")
+    state["payment_link_id"] = link_data.get("id", "")
+    state["payment_order_id"] = link_data.get("order_id") or ""
     state["error"] = None
     return state
