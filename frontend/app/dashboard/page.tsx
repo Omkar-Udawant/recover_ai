@@ -11,6 +11,7 @@ import {
   PieChart,
   RefreshCw,
   ShieldAlert,
+  ShieldCheck,
   TrendingUp,
   Zap,
 } from "lucide-react";
@@ -25,24 +26,52 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/lib/api-client";
-import { DashboardData } from "@/lib/types";
+import { BatchRunResponse, DashboardData, HonestyData } from "@/lib/types";
+
+const REASON_LABELS: Record<string, string> = {
+  quiet_hours: "Quiet hours",
+  attempt_cap: "Attempt cap",
+  cooldown: "Cooldown",
+  low_expected_value: "Low value",
+  already_resolved: "Resolved",
+  case_not_found: "No case",
+};
 
 export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
+  const [honesty, setHonesty] = useState<HonestyData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [batchLimit, setBatchLimit] = useState<number>(20);
+  const [batchDry, setBatchDry] = useState<boolean>(true);
+  const [batchRunning, setBatchRunning] = useState<boolean>(false);
+  const [batchResult, setBatchResult] = useState<BatchRunResponse | null>(null);
 
   const fetchDashboard = async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await api.getDashboard();
+      const [res, hon] = await Promise.all([api.getDashboard(), api.getHonesty()]);
       setData(res);
+      setHonesty(hon);
     } catch (err: any) {
       console.error("Dashboard fetch error", err);
       setError("Failed to load dashboard data from API.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const runBatch = async () => {
+    setBatchRunning(true);
+    try {
+      const res = await api.runBatch({ limit: batchLimit, tone: "friendly", respect_policy: true, dry_run: batchDry });
+      setBatchResult(res);
+      fetchDashboard();
+    } catch (err) {
+      console.error("Batch run failed", err);
+    } finally {
+      setBatchRunning(false);
     }
   };
 
@@ -108,6 +137,64 @@ export default function DashboardPage() {
 
         {data && (
           <>
+            {/* Honesty hero: net recovered, % of ceiling, attempt discipline */}
+            {honesty && (
+              <Card className="mb-8 border-emerald-900/40 bg-gradient-to-br from-emerald-950/30 via-slate-900/60 to-slate-900 shadow-md">
+                <CardContent className="pt-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+                    <div className="lg:col-span-4">
+                      <div className="flex items-center space-x-2 text-xs font-semibold uppercase tracking-wider text-emerald-400">
+                        <ShieldCheck className="h-4 w-4" />
+                        <span>Net recovered · honest money</span>
+                      </div>
+                      <div className="mt-1 text-3xl sm:text-4xl font-extrabold text-white">
+                        ₹{(honesty.net_recovered_inr / 100000).toFixed(2)}L
+                      </div>
+                      <div className="mt-1 text-xs text-slate-400">
+                        {honesty.pct_of_ceiling}% of achievable ceiling (₹{(honesty.ceiling_inr / 10000000).toFixed(2)}Cr) · cost ₹{honesty.cost_per_attempt_inr}/attempt
+                      </div>
+                      <div className="mt-3 h-2 rounded-full bg-slate-800 overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-emerald-500"
+                          style={{ width: `${Math.min(honesty.pct_of_ceiling, 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                    <div className="lg:col-span-3 flex items-center justify-start lg:justify-center space-x-2">
+                      <Badge variant="success" className="text-xs">{honesty.attempts_30d} acted (30d)</Badge>
+                      <Badge variant="warning" className="text-xs">{honesty.refused_30d} refused (30d)</Badge>
+                    </div>
+                    <div className="lg:col-span-5">
+                      <div className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+                        Refusals by reason — restraint is the feature
+                      </div>
+                      {Object.keys(honesty.refusals_by_reason).length === 0 ? (
+                        <p className="text-xs text-slate-500">No refusals in the last 30 days.</p>
+                      ) : (
+                        <div className="flex flex-wrap gap-2">
+                          {Object.entries(honesty.refusals_by_reason).map(([reason, count]) => (
+                            <Badge key={reason} variant="outline" className="text-xs border-slate-700 text-slate-300">
+                              {REASON_LABELS[reason] ?? reason}: {count}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                      {honesty.recent_refusals.length > 0 && (
+                        <div className="mt-3 space-y-1 max-h-28 overflow-y-auto">
+                          {honesty.recent_refusals.slice(0, 5).map((r, i) => (
+                            <div key={`${r.case_id}-${i}`} className="flex items-center justify-between text-[11px] font-mono text-slate-400">
+                              <span>{r.case_id?.substring(0, 8) ?? "—"} · {REASON_LABELS[r.reason ?? ""] ?? r.reason}</span>
+                              <span>{r.amount != null ? `₹${r.amount.toLocaleString("en-IN")}` : ""}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* 5 KPI Cards Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
               <KPICard
@@ -153,6 +240,80 @@ export default function DashboardPage() {
                 badge={`${data.kpis.ai_recommendation_accuracy_pct}% Reco Acc`}
               />
             </div>
+
+            {/* Bounded batch recovery runner */}
+            <Card className="mb-8 bg-slate-900/60 border-slate-800 backdrop-blur-sm shadow-md">
+              <CardHeader className="pb-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <CardTitle className="text-base text-white">Bounded Batch Recovery</CardTitle>
+                    <CardDescription className="text-xs text-slate-400">
+                      Ranks open cases by expected value, applies refusal guardrails to each, acts only where it pays.
+                    </CardDescription>
+                  </div>
+                  <div className="flex items-center space-x-2 text-xs text-slate-300">
+                    <label className="flex items-center space-x-1.5">
+                      <span className="text-slate-400">Cases</span>
+                      <input
+                        type="number"
+                        min={1}
+                        max={100}
+                        value={batchLimit}
+                        onChange={(e) => setBatchLimit(Math.max(1, Math.min(100, Number(e.target.value) || 1)))}
+                        className="w-16 rounded-md border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-white"
+                      />
+                    </label>
+                    <label className="flex items-center space-x-1.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={batchDry}
+                        onChange={(e) => setBatchDry(e.target.checked)}
+                        className="accent-blue-600"
+                      />
+                      <span className="text-slate-400">Dry run</span>
+                    </label>
+                    <Button
+                      size="sm"
+                      onClick={runBatch}
+                      disabled={batchRunning}
+                      className="bg-blue-600 hover:bg-blue-500 text-white text-xs"
+                    >
+                      <Zap className={`h-3.5 w-3.5 mr-1.5 ${batchRunning ? "animate-spin" : ""}`} />
+                      {batchRunning ? "Running…" : batchDry ? "Preview batch" : "Run batch"}
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              {batchResult && (
+                <CardContent className="pt-2">
+                  <div className="flex flex-wrap items-center gap-2 text-xs mb-3">
+                    <Badge variant="outline" className="border-slate-700 text-slate-300">Considered: {batchResult.considered}</Badge>
+                    <Badge variant="success">{batchDry ? "Would act" : "Acted"}: {batchResult.acted}</Badge>
+                    <Badge variant="warning">Refused: {batchResult.refused}</Badge>
+                    <span className="text-slate-400">
+                      At risk ₹{batchResult.batch_at_risk_inr.toLocaleString("en-IN")} · Projected net ₹{batchResult.projected_net_inr.toLocaleString("en-IN")}
+                    </span>
+                  </div>
+                  {Object.keys(batchResult.refusals_by_reason).length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {Object.entries(batchResult.refusals_by_reason).map(([reason, count]) => (
+                        <Badge key={reason} variant="outline" className="text-[11px] border-amber-900/50 text-amber-300">
+                          {REASON_LABELS[reason] ?? reason}: {count}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                  <div className="max-h-44 overflow-y-auto space-y-1">
+                    {batchResult.results.slice(0, 30).map((r) => (
+                      <div key={r.case_id} className="flex items-center justify-between text-[11px] font-mono text-slate-400 border-b border-slate-800/50 py-1">
+                        <span>{r.case_id.substring(0, 8)} · {r.decision}{r.refusal_reason ? ` (${REASON_LABELS[r.refusal_reason] ?? r.refusal_reason})` : ""}{r.channel ? ` → ${r.channel}` : ""}</span>
+                        <span>{r.expected_value_inr != null ? `EV ₹${r.expected_value_inr.toLocaleString("en-IN")}` : ""}</span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              )}
+            </Card>
 
             {/* Row 1 Charts: Trend (8 cols) & Funnel (4 cols) */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-8">

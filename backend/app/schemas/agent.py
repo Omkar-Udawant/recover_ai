@@ -11,6 +11,8 @@ class AgentRunRequest(BaseModel):
     customer_email: Optional[str] = Field(None, description="Customer email")
     customer_phone: Optional[str] = Field(None, description="Customer phone")
     tone: Optional[str] = Field("professional", description="Outreach tone: professional, friendly, hinglish, formal")
+    respect_policy: bool = Field(True, description="Apply refusal guardrails before acting")
+    force: bool = Field(False, description="Override a policy refusal (audited)")
 
 
 class AgentRunResponse(BaseModel):
@@ -23,6 +25,8 @@ class AgentRunResponse(BaseModel):
     message: str
     payment_link: str
     case_status: str
+    decision: str = Field("acted", description="acted | refused")
+    refusal_reason: Optional[str] = Field(None, description="Policy reason code when refused")
 
 
 class GenerateMessageRequest(BaseModel):
@@ -54,3 +58,29 @@ class RetryPaymentResponse(BaseModel):
     status: str
     amount: float
     currency: str
+
+
+class BatchRunRequest(BaseModel):
+    limit: int = Field(20, ge=1, le=100, description="Max open cases to consider, ranked by expected value")
+    tone: Optional[str] = Field("professional", description="Outreach tone for acted cases")
+    respect_policy: bool = Field(True, description="Apply refusal guardrails")
+    dry_run: bool = Field(False, description="Evaluate policy only; persist nothing")
+
+
+class BatchCaseResult(BaseModel):
+    case_id: str
+    decision: str
+    refusal_reason: Optional[str] = None
+    risk_level: Optional[str] = None
+    channel: Optional[str] = None
+    expected_value_inr: Optional[float] = None
+
+
+class BatchRunResponse(BaseModel):
+    considered: int
+    acted: int
+    refused: int
+    refusals_by_reason: dict
+    batch_at_risk_inr: float
+    projected_net_inr: float
+    results: list

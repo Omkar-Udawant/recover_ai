@@ -20,6 +20,16 @@ class Settings(BaseSettings):
     DEMO_AUTH_ENABLED: bool = False
     DEMO_MERCHANT_EMAIL: str = ""
     DEMO_MERCHANT_PASSWORD: str = ""
+
+    # Policy guardrails (Wapsi-style refusal engine): the agent must refuse
+    # to act when outreach is wasteful, duplicative, or non-compliant.
+    POLICY_MAX_ATTEMPTS_PER_CASE_30D: int = 3
+    POLICY_COOLDOWN_HOURS: int = 24
+    POLICY_MIN_EXPECTED_VALUE_INR: float = 120.0
+    POLICY_COST_PER_ATTEMPT_INR: float = 1.5
+    POLICY_QUIET_HOURS_ENFORCE: bool = True
+    POLICY_QUIET_START_HOUR_IST: int = 21
+    POLICY_QUIET_END_HOUR_IST: int = 9
     SUPABASE_URL: str = ""
     SUPABASE_ANON_KEY: str = ""
     SUPABASE_SERVICE_ROLE_KEY: str = ""
