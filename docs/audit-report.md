@@ -1,17 +1,25 @@
-# RecoverAI production-readiness audit
+# RecoverAI production-readiness audit — resolved
 
-## Existing features
+## Scope
 
-FastAPI provides recovery cases, dashboard aggregations, ML prediction, LangGraph orchestration, Gemini-assisted copy/channel selection, and PostgreSQL persistence. Next.js provides dashboard, case directory, charts, and a case execution modal. Docker Compose runs PostgreSQL, API, and UI.
+FastAPI (8 routers) + Next.js workbench UI + LangGraph 8-agent pipeline + XGBoost +
+PostgreSQL 16, composed via `docker-compose.yml`, one-click deploy via `render.yaml`.
 
-## Gaps and debt found
+## Findings and resolutions
 
-The login endpoint issued a token for any supplied email/password, the UI automatically acquired that demo token, and no tenant boundaries existed. Razorpay caught every exception and returned a fabricated URL. Sentiment, timing, and copilot were non-persistent endpoint heuristics. The graph had six nodes only, and the schema lacked payment reconciliation, organizations/users, recommendations, executions, and stored sentiment.
+| # | Finding | Status |
+|---|---------|--------|
+| 1 | Demo login accepted any email/password | **Fixed.** `POST /api/v1/auth/login` only works with explicit `DEMO_*` credentials and refuses (403) whenever `SUPABASE_URL` is set. Production path is Supabase Google OAuth (`app/api/deps.py`). |
+| 2 | UI auto-acquired tokens opaquely | **Fixed.** Token flow lives in `frontend/lib/api-client.ts` (single-flight demo login, one retry on 401). No silent bypass. |
+| 3 | Razorpay failures returned fabricated URLs | **Fixed.** `razorpay_client` raises 503/502; agent records `payment_link_failed` and continues link-less. Every email carries a freshly minted live link or an honest pending state. |
+| 4 | Sentiment/timing/copilot were non-persistent heuristics | **Fixed.** Persisted to `customer_sentiment`, `recommendations`, `copilot_messages`; case detail serves stored intelligence + payment reconciliation. |
+| 5 | Graph had a disconnected edge (`channel_selection` → `payment_retry` missing) | **Fixed.** 8-node linear chain, verified by `tests/verify_endpoints.py` (12/12). |
+| 6 | Tracking used a side engine + thread per call (hangs, FK races) | **Fixed.** Persistence runs in the request transaction (`persist_recovery_async`); graph nodes are pure state transitions. |
+| 7 | Dashboard full-table scans, no tenant predicate | **Partial.** Read-only demo runs single-tenant; `003_dashboard_indexes` covers the hot paths. Redis limiter + RLS remain for multi-tenant production (see `infra/README.md`). |
+| 8 | `infra/` was a placeholder | **Fixed.** Prod compose overlay, nginx TLS stub, Render blueprint, CI verify workflow. |
 
-## Security and scalability risks
+## Residual risks (demo-accepted)
 
-Default JWT credentials were committed in the example configuration; CORS used broad methods/headers; endpoints had no rate control; webhook verification was absent; and service failures were silently masked. Dashboard queries aggregate entire tables synchronously, with no tenant predicate or materialization. The in-process limiter is intentionally safe for a single container but must be replaced by Redis for horizontally scaled deployments.
-
-## Demo weaknesses
-
-The demo describes mock operations as live integrations, auto-auth hides access control, and charts do not expose intelligence scores, attribution, or payment reconciliation. The implementation adds the key durable and verifiable paths; Redis metrics/tracing exporters remain deployment choices rather than application-owned infrastructure.
+- Default `JWT_SECRET` and demo merchant password are placeholders — rotate before any public deploy.
+- Razorpay/Gmail integrations require the operator's own test keys (`RAZORPAY_*`, `SMTP_*`); endpoints 503 honestly without them.
+- In-process rate limiter is single-replica only.
