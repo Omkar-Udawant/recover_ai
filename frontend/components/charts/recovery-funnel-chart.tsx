@@ -26,7 +26,7 @@ const STAGE_COLORS = [
 export function RecoveryFunnelChart({ data }: RecoveryFunnelChartProps) {
   if (!data || data.length === 0) {
     return (
-      <div className="flex h-64 items-center justify-center text-sm text-slate-500">
+      <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">
         No funnel data
       </div>
     );
@@ -41,21 +41,21 @@ export function RecoveryFunnelChart({ data }: RecoveryFunnelChartProps) {
         return (
           <div key={stage.stage} className="space-y-1">
             <div className="flex items-center justify-between text-xs">
-              <div className="flex items-center space-x-2 text-slate-300 font-medium">
-                <Icon className="h-3.5 w-3.5 text-slate-400" />
+              <div className="flex items-center space-x-2 text-foreground/90 font-medium">
+                <Icon className="h-3.5 w-3.5 text-muted-foreground" />
                 <span>{stage.stage}</span>
               </div>
-              <div className="flex items-center space-x-2 text-slate-400">
-                <span className="font-semibold text-white">
+              <div className="flex items-center space-x-2 text-muted-foreground">
+                <span className="font-semibold font-mono tabular-nums text-foreground">
                   {stage.count.toLocaleString("en-IN")}
                 </span>
-                <span className="text-[11px] text-slate-500">
+                <span className="text-[11px] font-mono text-muted-foreground">
                   ({stage.percentage}%)
                 </span>
               </div>
             </div>
 
-            <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-900 border border-slate-800">
+            <div className="h-2.5 w-full overflow-hidden rounded-full bg-secondary border border-border">
               <div
                 className={`h-full rounded-full bg-gradient-to-r ${gradient} transition-all duration-500`}
                 style={{ width: `${Math.max(stage.percentage, 3)}%` }}

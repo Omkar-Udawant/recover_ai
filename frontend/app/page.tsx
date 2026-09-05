@@ -1,138 +1,295 @@
+"use client";
+
+import React, { useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Layers } from "lucide-react";
+import { ArrowRight, CheckCircle2, Layers, XCircle } from "lucide-react";
 import { Navbar } from "@/components/navbar";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function HomePage() {
+  const [simAmount, setSimAmount] = useState<number>(4500);
+  const [simProb, setSimProb] = useState<number>(68);
+  const [simCost, setSimCost] = useState<number>(180);
+  const margin = 0.70;
+  const floorInr = 45;
+
+  const grossRecoverable = simAmount * margin;
+  const expectedValue = (simProb / 100) * grossRecoverable - simCost;
+  const passesGate = expectedValue >= floorInr;
+
+  const stages = [
+    {
+      id: "01",
+      tag: "DETECT",
+      title: "Ledger Ingestion and Audit",
+      desc: "Ingests failed payments, abandoned transactions, and invoice events into an immutable PostgreSQL audit ledger.",
+    },
+    {
+      id: "02",
+      tag: "PREDICT",
+      title: "Calibrated Risk Scoring",
+      desc: "XGBoost tabular classifier outputs calibrated recovery probabilities based on tenure, volume, and past defaults.",
+    },
+    {
+      id: "03",
+      tag: "PRICE",
+      title: "Margin and EV Pricing",
+      desc: "Computes contribution margin in integer paise. Subtracts channel tolls to derive rigorous expected recovery return.",
+    },
+    {
+      id: "04",
+      tag: "DECIDE",
+      title: "Autonomous Policy Gate",
+      desc: "Evaluates cooldown windows, rolling 30-day attempt caps, and IST quiet hours before authorizing action.",
+    },
+    {
+      id: "05",
+      tag: "EXECUTE",
+      title: "Multi-Channel Dispatch",
+      desc: "Generates idempotent Razorpay payment links, Gemini personalized emails, and Hinglish telephony scripts.",
+    },
+    {
+      id: "06",
+      tag: "STOP",
+      title: "Mathematical Stopping Rule",
+      desc: "Calculates optimal stopping threshold: outreach sequence halts automatically when expected value inverts.",
+    },
+  ];
+
   return (
-    <div className="flex min-h-screen flex-col bg-slate-950 text-slate-100">
+    <div className="flex min-h-screen flex-col bg-background text-foreground selection:bg-emerald-500/20 selection:text-emerald-800 dark:selection:text-emerald-300 font-sans">
       <Navbar />
 
       <main className="flex-1">
-        {/* Hero Section */}
-        <section className="relative overflow-hidden py-20 md:py-28">
+        {/* Technical Hero Header */}
+        <section className="py-16 md:py-24 border-b border-border">
           <div className="container mx-auto px-4 sm:px-6 text-center max-w-4xl">
-            <Badge variant="outline" className="mb-4 border-emerald-500/30 bg-emerald-950/40 text-emerald-300 py-1 px-3 font-mono text-[11px]">
-              Track 03 · RecoverAI · the return
-            </Badge>
-
-            <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-white mb-6">
-              Most recovery attempts
-              <br />
-              <span className="text-emerald-400 underline decoration-emerald-500/50 underline-offset-8">destroy value</span>
-            </h1>
-
-            <p className="text-lg sm:text-xl text-slate-400 mb-4 leading-relaxed max-w-2xl mx-auto">
-              Every outreach costs money whether it works or not. RecoverAI decides{" "}
-              <span className="text-slate-200">what</span> to try,{" "}
-              <span className="text-slate-200">when</span>, and on which channel — and most of
-              the time it decides <span className="text-white font-semibold">not to act at all</span>,
-              with the arithmetic recorded beside every refusal.
-            </p>
-
-            <div className="flex flex-wrap items-center justify-center gap-2 font-mono text-sm my-8">
-              <span className="px-3 py-1 rounded-lg border border-cyan-500/40 text-cyan-300">probability</span>
-              <span className="text-slate-500">×</span>
-              <span className="px-3 py-1 rounded-lg border border-emerald-500/40 text-emerald-300">(amount × margin)</span>
-              <span className="text-slate-500">−</span>
-              <span className="px-3 py-1 rounded-lg border border-rose-500/40 text-rose-300">cost</span>
-              <span className="text-slate-400 text-lg">≥</span>
-              <span className="px-3 py-1 rounded-lg border border-amber-500/40 text-amber-300">floor</span>
+            <div className="inline-flex flex-wrap items-center justify-center gap-2 mb-6">
+              <Badge variant="settled" className="text-[11px] py-1 px-2.5">
+                Track 03 · Autonomous Revenue Recovery Agent
+              </Badge>
+              <Badge variant="secondary" className="hidden sm:inline-flex text-[11px] py-1 px-2.5">
+                Calibrated XGBoost &amp; Integer Paise Engine
+              </Badge>
             </div>
 
-            <div className="flex flex-wrap items-center justify-center gap-4">
+            <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-foreground leading-[1.1] mb-6 font-sans">
+              Most recovery attempts
+              <br />
+              <span className="text-emerald-600 dark:text-emerald-400">destroy economic value.</span>
+            </h1>
+
+            <p className="text-sm sm:text-base text-muted-foreground mb-8 leading-relaxed max-w-2xl mx-auto font-sans">
+              Every customer outreach costs capital whether it converts or churns. RecoverAI models
+              calibrated recovery probabilities, contribution margin, and strict quiet-hours rules
+              before dispatching an intervention — and refuses to act when expected return is below the floor.
+            </p>
+
+            <div className="flex flex-wrap items-center justify-center gap-3">
               <Link href="/dashboard">
-                <Button size="lg" className="bg-emerald-600 hover:bg-emerald-500 text-white px-8 h-12 shadow-lg shadow-emerald-600/25 text-sm">
-                  Open Recovery Dashboard
+                <Button size="lg" className="font-mono text-xs px-6 h-11">
+                  Launch Recovery Terminal
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </Link>
               <Link href="/cases">
-                <Button size="lg" variant="outline" className="border-slate-800 bg-slate-900/60 hover:bg-slate-800 text-slate-300 h-12 px-6 text-sm">
-                  <Layers className="mr-2 h-4 w-4 text-emerald-400" />
-                  Explore 5,000+ Cases
+                <Button size="lg" variant="outline" className="font-mono text-xs px-6 h-11 border-border">
+                  <Layers className="mr-2 h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                  Explore 5,003 Cases
                 </Button>
               </Link>
+            </div>
+
+            {/* Quick Metrics Ribbon */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-12 pt-8 border-t border-border text-left font-mono">
+              <div className="p-3 rounded-[4px] border border-border bg-card">
+                <div className="text-[10px] uppercase text-muted-foreground tracking-wider">ML Accuracy</div>
+                <div className="text-xl font-bold text-foreground mt-0.5 tabular-nums">66.91%</div>
+                <div className="text-[10px] text-muted-foreground">0.681 ROC-AUC</div>
+              </div>
+              <div className="p-3 rounded-[4px] border border-border bg-card">
+                <div className="text-[10px] uppercase text-muted-foreground tracking-wider">Revenue Recovered</div>
+                <div className="text-xl font-bold text-foreground mt-0.5 tabular-nums">₹96.02 Lakhs</div>
+                <div className="text-[10px] text-emerald-600 dark:text-emerald-400">55.0% Win Rate</div>
+              </div>
+              <div className="p-3 rounded-[4px] border border-border bg-card">
+                <div className="text-[10px] uppercase text-muted-foreground tracking-wider">Total Pipeline</div>
+                <div className="text-xl font-bold text-foreground mt-0.5 tabular-nums">5,003 Cases</div>
+                <div className="text-[10px] text-muted-foreground">₹1.80 Cr Evaluated</div>
+              </div>
+              <div className="p-3 rounded-[4px] border border-border bg-card">
+                <div className="text-[10px] uppercase text-muted-foreground tracking-wider">Money Arithmetic</div>
+                <div className="text-xl font-bold text-foreground mt-0.5">Zero Float</div>
+                <div className="text-[10px] text-muted-foreground">Integer Paise Ledger</div>
+              </div>
             </div>
           </div>
         </section>
 
-        {/* 8-step engine grid */}
-        <section className="container mx-auto px-4 sm:px-6 pb-20 max-w-6xl">
-          <p className="text-xs font-semibold uppercase tracking-widest text-emerald-400 mb-1">
-            One engine · detect to stop
-          </p>
-          <h2 className="text-2xl font-extrabold text-white mb-6">Eight steps, one refusal-first pipeline</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card className="bg-slate-900/50 border-slate-800 backdrop-blur-sm shadow-md">
-              <CardHeader>
-                <p className="font-mono text-[11px] text-emerald-400 tracking-widest">01 · DETECT</p>
-                <CardTitle className="text-white text-base">Watch the whole book</CardTitle>
-                <CardDescription className="text-xs text-slate-400">
-                  Every failed payment, abandoned checkout, and overdue invoice becomes a recovery case with amount, cause, and history attached.
-                </CardDescription>
-              </CardHeader>
-            </Card>
+        {/* Live Mathematical Expected-Value Gate Simulator */}
+        <section className="py-16 bg-secondary/30 border-b border-border">
+          <div className="container mx-auto px-4 sm:px-6 max-w-5xl">
+            <div className="mb-8 text-center max-w-2xl mx-auto">
+              <Badge variant="inflight" className="mb-2 font-mono text-[10px]">
+                Live Mathematical Gate Playground
+              </Badge>
+              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground font-sans">
+                The Expected-Value Invariant
+              </h2>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1.5 leading-relaxed font-mono">
+                Test the exact formula that governs all 8 agents in real time. Adjust invoice size,
+                predicted probability, and channel toll to see how RecoverAI prevents value destruction.
+              </p>
+            </div>
 
-            <Card className="bg-slate-900/50 border-slate-800 backdrop-blur-sm shadow-md">
-              <CardHeader>
-                <p className="font-mono text-[11px] text-emerald-400 tracking-widest">02 · PREDICT</p>
-                <CardTitle className="text-white text-base">Read the failure</CardTitle>
-                <CardDescription className="text-xs text-slate-400">
-                  XGBoost scores recovery probability (66.9% accuracy, 0.681 AUC) while sentiment analysis prices churn risk — no action below calibrated confidence.
-                </CardDescription>
-              </CardHeader>
-            </Card>
+            <Card className="p-6 md:p-8 bg-card border-border">
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
+                {/* Sliders column */}
+                <div className="md:col-span-7 space-y-5">
+                  {/* Amount Slider */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center text-xs font-mono">
+                      <span className="text-muted-foreground">Invoice Amount</span>
+                      <span className="font-bold text-foreground tabular-nums">₹{simAmount.toLocaleString("en-IN")}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={500}
+                      max={25000}
+                      step={250}
+                      value={simAmount}
+                      onChange={(e) => setSimAmount(Number(e.target.value))}
+                      className="w-full accent-emerald-600 h-1.5 bg-secondary rounded cursor-pointer"
+                    />
+                  </div>
 
-            <Card className="bg-slate-900/50 border-slate-800 backdrop-blur-sm shadow-md">
-              <CardHeader>
-                <p className="font-mono text-[11px] text-emerald-400 tracking-widest">03 · PRICE</p>
-                <CardTitle className="text-white text-base">Cost it out</CardTitle>
-                <CardDescription className="text-xs text-slate-400">
-                  Multiply probability by margin at stake, subtract the fee — all in integer paise. A ₹4 lakh invoice at 8% margin can be worth less than a small subscription.
-                </CardDescription>
-              </CardHeader>
-            </Card>
+                  {/* Probability Slider */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center text-xs font-mono">
+                      <span className="text-muted-foreground">XGBoost Recovery Probability</span>
+                      <span className="font-bold text-foreground tabular-nums">{simProb}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={5}
+                      max={95}
+                      step={1}
+                      value={simProb}
+                      onChange={(e) => setSimProb(Number(e.target.value))}
+                      className="w-full accent-emerald-600 h-1.5 bg-secondary rounded cursor-pointer"
+                    />
+                  </div>
 
-            <Card className="bg-slate-900/50 border-slate-800 backdrop-blur-sm shadow-md">
-              <CardHeader>
-                <p className="font-mono text-[11px] text-emerald-400 tracking-widest">04 · DECIDE</p>
-                <CardTitle className="text-white text-base">Usually, refuse</CardTitle>
-                <CardDescription className="text-xs text-slate-400">
-                  Quiet hours, cooldowns, attempt caps, then the floor. Whatever the answer, the arithmetic and the rule are written to the audit trail.
-                </CardDescription>
-              </CardHeader>
-            </Card>
+                  {/* Channel Cost Slider */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center text-xs font-mono">
+                      <span className="text-muted-foreground">Outreach Cost (Channel Toll)</span>
+                      <span className="font-bold text-foreground tabular-nums">₹{simCost.toFixed(2)}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={5}
+                      max={500}
+                      step={5}
+                      value={simCost}
+                      onChange={(e) => setSimCost(Number(e.target.value))}
+                      className="w-full accent-emerald-600 h-1.5 bg-secondary rounded cursor-pointer"
+                    />
+                  </div>
 
-            <Card className="bg-slate-900/50 border-slate-800 backdrop-blur-sm shadow-md">
-              <CardHeader>
-                <p className="font-mono text-[11px] text-emerald-400 tracking-widest">05 · EXECUTE</p>
-                <CardTitle className="text-white text-base">Act, once</CardTitle>
-                <CardDescription className="text-xs text-slate-400">
-                  A real Razorpay test-mode payment link, a real Gmail email, a logged voice call from a registered template — keyed idempotently, never twice.
-                </CardDescription>
-              </CardHeader>
-            </Card>
+                  {/* Formula Breakdown Callout */}
+                  <div className="p-3 rounded-[4px] bg-secondary/50 border border-border font-mono text-[11px] text-muted-foreground space-y-1">
+                    <div>Gross at Stake: ₹{simAmount} × 70% Margin = ₹{grossRecoverable.toFixed(2)}</div>
+                    <div>Calculation: ({simProb}% × ₹{grossRecoverable.toFixed(2)}) − ₹{simCost.toFixed(2)} = ₹{expectedValue.toFixed(2)}</div>
+                    <div>Required Threshold: Expected Value ≥ ₹{floorInr}.00 Floor</div>
+                  </div>
+                </div>
 
-            <Card className="bg-slate-900/50 border-slate-800 backdrop-blur-sm shadow-md">
-              <CardHeader>
-                <p className="font-mono text-[11px] text-emerald-400 tracking-widest">06 · STOP</p>
-                <CardTitle className="text-white text-base">And know when to</CardTitle>
-                <CardDescription className="text-xs text-slate-400">
-                  No maxAttempts constant doing the real work: a sequence ends when expected value crosses the floor. Webhook receipts close the loop.
-                </CardDescription>
-              </CardHeader>
+                {/* Outcome Display Card */}
+                <div className="md:col-span-5 p-6 rounded-[6px] border border-border bg-secondary/30 text-center space-y-4">
+                  <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
+                    Expected Net Return
+                  </div>
+                  <div className="text-4xl font-extrabold font-mono tracking-tight text-foreground tabular-nums">
+                    ₹{expectedValue.toFixed(2)}
+                  </div>
+
+                  <div className="flex justify-center">
+                    {passesGate ? (
+                      <Badge variant="settled" className="py-1 px-3 text-xs font-semibold">
+                        <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+                        Gate Cleared · Dispatch Authorized
+                      </Badge>
+                    ) : (
+                      <Badge variant="refused" className="py-1 px-3 text-xs font-semibold">
+                        <XCircle className="h-3.5 w-3.5 mr-1" />
+                        Gate Refusal · Value Destroying
+                      </Badge>
+                    )}
+                  </div>
+
+                  <p className="text-xs text-muted-foreground leading-relaxed font-sans">
+                    {passesGate
+                      ? "Positive expected return confirmed. Outbound Razorpay payment link and communication authorized."
+                      : "Refused at mathematical boundary. Outreach suppressed to prevent value destruction and preserve merchant margin."}
+                  </p>
+                </div>
+              </div>
             </Card>
+          </div>
+        </section>
+
+        {/* 6-Stage Multi-Agent Architecture */}
+        <section className="py-16 md:py-20">
+          <div className="container mx-auto px-4 sm:px-6 max-w-6xl">
+            <div className="mb-10 text-center max-w-2xl mx-auto">
+              <Badge variant="secondary" className="mb-2 font-mono text-[10px]">
+                Directed Acyclic Graph Architecture
+              </Badge>
+              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground font-sans">
+                Eight Stages, One Refusal-First Pipeline
+              </h2>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1.5 leading-relaxed font-mono">
+                Stateful orchestration across PostgreSQL ledger, XGBoost scoring, and Google Gemini reasoning.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {stages.map((step) => (
+                <Card key={step.id} className="p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-xs font-bold text-muted-foreground">
+                      STAGE {step.id}
+                    </span>
+                    <span className="font-mono text-[10px] rounded-[3px] border border-border bg-secondary/50 px-1.5 py-0.5 text-foreground">
+                      {step.tag}
+                    </span>
+                  </div>
+                  <h3 className="text-sm font-bold text-foreground tracking-tight font-sans">
+                    {step.title}
+                  </h3>
+                  <p className="text-xs text-muted-foreground leading-relaxed font-sans">
+                    {step.desc}
+                  </p>
+                </Card>
+              ))}
+            </div>
           </div>
         </section>
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-slate-900 bg-slate-950 py-6">
-        <div className="container mx-auto px-4 text-center text-xs text-slate-500">
-          RecoverAI — Autonomous Revenue Recovery Platform • Days 1 to 8 Complete
+      {/* Clean Technical Footer */}
+      <footer className="border-t border-border bg-card py-6">
+        <div className="container mx-auto px-4 text-center text-xs font-mono text-muted-foreground flex flex-col sm:flex-row items-center justify-between gap-3 max-w-7xl">
+          <div>RecoverAI · Autonomous Revenue Recovery Platform</div>
+          <div className="flex items-center gap-4">
+            <Link href="/dashboard" className="hover:text-foreground transition-colors">Terminal</Link>
+            <Link href="/cases" className="hover:text-foreground transition-colors">Case Ledger</Link>
+            <Link href="/policy" className="hover:text-foreground transition-colors">Guardrails</Link>
+            <a href="http://localhost:8000/docs" target="_blank" rel="noreferrer" className="hover:text-foreground transition-colors">API Docs</a>
+          </div>
         </div>
       </footer>
     </div>

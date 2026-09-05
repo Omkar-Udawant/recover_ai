@@ -66,8 +66,9 @@ services:
       - NEXT_PUBLIC_DEMO_EMAIL=${NEXT_PUBLIC_DEMO_EMAIL:-demo@recoverai.local}
       - NEXT_PUBLIC_DEMO_PASSWORD=${NEXT_PUBLIC_DEMO_PASSWORD:-RecoverAI-local-demo-2026}
       - CI=true
+      - WATCHPACK_POLLING=true
     ports:
-      - "3000:3000"
+      - "${FRONTEND_PORT:-3001}:3000"
     depends_on:
       - backend
     volumes:

@@ -1,56 +1,54 @@
 "use client";
 
-import { useState } from "react";
-import { Bot, Layers, Sparkles, Zap } from "lucide-react";
-import { Navbar } from "@/components/navbar";
+import React, { useState } from "react";
+import { WorkbenchShell } from "@/components/workbench-shell";
 import { CaseTable } from "@/components/case-table";
-import { CaseDetailModal } from "@/components/case-detail-modal";
-import { Badge } from "@/components/ui/badge";
+import { WorkbenchInspector } from "@/components/workbench-inspector";
 
 export default function CasesPage() {
   const [selectedCaseId, setSelectedCaseId] = useState<string | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState<number>(0);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
-      <Navbar />
-
-      <main className="flex-1 container mx-auto px-4 sm:px-6 py-8 max-w-7xl">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-          <div>
-            <div className="flex items-center space-x-2.5">
-              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
-                Revenue Recovery Cases
-              </h1>
-              <Badge variant="success" className="text-xs">
-                5,000+ Records
-              </Badge>
+    <WorkbenchShell activeViewTitle="Case Ledger">
+      <div className="flex h-full w-full overflow-hidden">
+        {/* Main Ledger Scrollable Container */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 min-w-0">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border pb-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-base sm:text-lg font-bold tracking-tight text-foreground">
+                  Default Event Ledger
+                </h1>
+                <span className="rounded-[3px] border border-border bg-secondary/60 px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">
+                  5,003 Synchronized
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground font-mono mt-0.5">
+                Calibrated XGBoost recovery predictions evaluated against integer paise refusal policy.
+              </p>
             </div>
-            <p className="text-sm text-slate-400 mt-1">
-              Select any failed transaction to trigger the multi-agent AI pipeline or inspect the action timeline.
-            </p>
+            <div className="text-[11px] font-mono text-muted-foreground">
+              Click any row to open split inspector &amp; orchestrate 8-agent DAG
+            </div>
           </div>
 
-          <div className="flex items-center space-x-2 text-xs text-slate-400 bg-slate-900/60 border border-slate-800 px-3 py-1.5 rounded-lg">
-            <Sparkles className="h-3.5 w-3.5 text-blue-400" />
-            <span>Click any case row to inspect dossier & run AI</span>
-          </div>
+          <CaseTable
+            key={refreshTrigger}
+            selectedCaseId={selectedCaseId}
+            onSelectCase={(id) => setSelectedCaseId(id)}
+          />
         </div>
 
-        {/* Case Table */}
-        <CaseTable
-          key={refreshTrigger}
-          onSelectCase={(id) => setSelectedCaseId(id)}
-        />
-
-        {/* Case Inspection & Agent Trigger Modal */}
-        <CaseDetailModal
-          caseId={selectedCaseId}
-          onClose={() => setSelectedCaseId(null)}
-          onCaseUpdated={() => setRefreshTrigger((prev) => prev + 1)}
-        />
-      </main>
-    </div>
+        {/* 440px Split-view Inspector */}
+        {selectedCaseId && (
+          <WorkbenchInspector
+            caseId={selectedCaseId}
+            onClose={() => setSelectedCaseId(null)}
+            onCaseUpdated={() => setRefreshTrigger((prev) => prev + 1)}
+          />
+        )}
+      </div>
+    </WorkbenchShell>
   );
 }
