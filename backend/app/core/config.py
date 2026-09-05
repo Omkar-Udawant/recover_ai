@@ -41,6 +41,7 @@ class Settings(BaseSettings):
 
     # AI / LLM Integrations
     GEMINI_API_KEY: str = ""
+    GEMINI_MODEL: str = "gemini-3.8-flash"
 
     # Outbound email (SMTP — Gmail App Password for the demo)
     SMTP_HOST: str = "smtp.gmail.com"

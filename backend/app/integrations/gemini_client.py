@@ -33,7 +33,7 @@ def select_channel_with_gemini(
     if _init_gemini():
         try:
             import google.generativeai as genai
-            model = genai.GenerativeModel("gemini-1.5-flash")
+            model = genai.GenerativeModel(settings.GEMINI_MODEL)
             prompt = f"""
 You are an AI Revenue Recovery Agent. Select the single best communication channel for this customer.
 Channels available: email, whatsapp, sms, voice_call.
@@ -97,7 +97,7 @@ def generate_message_with_gemini(
     if _init_gemini():
         try:
             import google.generativeai as genai
-            model = genai.GenerativeModel("gemini-1.5-flash")
+            model = genai.GenerativeModel(settings.GEMINI_MODEL)
             prompt = f"""
 You are RecoverAI, an empathetic revenue recovery agent.
 Write a concise, friendly, personalized notification to win back a payment.

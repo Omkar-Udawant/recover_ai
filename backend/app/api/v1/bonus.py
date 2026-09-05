@@ -38,7 +38,7 @@ async def analyze_sentiment(
     if _init_gemini():
         try:
             import google.generativeai as genai
-            model = genai.GenerativeModel("gemini-1.5-flash")
+            model = genai.GenerativeModel(settings.GEMINI_MODEL)
             prompt = f"""
 Analyze this customer reply to a payment recovery notice:
 "{text}"
@@ -204,7 +204,7 @@ Current RecoverAI Metrics:
     if _init_gemini():
         try:
             import google.generativeai as genai
-            model = genai.GenerativeModel("gemini-1.5-flash")
+            model = genai.GenerativeModel(settings.GEMINI_MODEL)
             prompt = f"""
 You are the RecoverAI Merchant Copilot. Answer the merchant's question clearly and concisely using these live metrics:
 {context_summary}
