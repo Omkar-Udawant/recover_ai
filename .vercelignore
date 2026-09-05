@@ -1,0 +1,15 @@
+# Keep the serverless function lean: deploy API code + model only.
+frontend/
+data/
+docs/
+infra/
+.github/
+backend/tests/
+backend/scripts/
+backend/alembic/
+backend/alembic.ini
+docker-compose.yml
+render.yaml
+Dockerfile.backend
+*.md
+.git/
