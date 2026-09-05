@@ -9,6 +9,7 @@ services:
   - type: web
     name: recoverai-backend
     runtime: docker
+    plan: free
     rootDir: backend
     dockerfilePath: ./Dockerfile
     healthCheckPath: /health
@@ -48,6 +49,7 @@ services:
   - type: web
     name: recoverai-frontend
     runtime: docker
+    plan: free
     rootDir: frontend
     dockerfilePath: ./Dockerfile.prod
     envVars:
