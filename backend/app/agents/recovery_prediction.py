@@ -1,10 +1,12 @@
 import os
 import pickle
 from app.agents.state import RecoveryState
-from app.ml.features import extract_features
+from app.ml.features import FEATURE_NAMES, extract_features
 
 MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "ml", "model.pkl")
 _cached_model = None
+_lite_checked = False
+_lite_available = False
 
 
 def _get_model():
@@ -16,6 +18,25 @@ def _get_model():
         except Exception:
             _cached_model = None
     return _cached_model
+
+
+def _lite_prob(features) -> float | None:
+    """Identical-tree inference without the xgboost stack (serverless-safe)."""
+    global _lite_checked, _lite_available
+    if not _lite_checked:
+        try:
+            from app.ml import xgb_lite
+            _lite_available = xgb_lite.is_available()
+        except Exception:
+            _lite_available = False
+        _lite_checked = True
+    if not _lite_available:
+        return None
+    try:
+        from app.ml import xgb_lite
+        return float(xgb_lite.predict_proba_row(list(features), FEATURE_NAMES))
+    except Exception:
+        return None
 
 
 def run(state: RecoveryState) -> RecoveryState:
@@ -30,15 +51,19 @@ def run(state: RecoveryState) -> RecoveryState:
         try:
             prob = float(model.predict_proba(features.reshape(1, -1))[0, 1])
         except Exception:
-            prob = 0.50
+            prob = _lite_prob(features)
+            if prob is None:
+                prob = 0.50
     else:
-        # Logistic heuristic fallback
-        eng = float(state.get("engagement_score") or 55.0)
-        prev = int(state.get("previous_successful_recoveries") or 0)
-        amt = float(state.get("amount") or 0.0)
-        days = int(state.get("days_overdue") or 0)
-        z = -0.85 + 0.032 * eng + 0.42 * prev - 0.00010 * amt - 0.040 * days
-        prob = float(1.0 / (1.0 + (2.71828 ** (-z))))
+        prob = _lite_prob(features)
+        if prob is None:
+            # Logistic heuristic fallback
+            eng = float(state.get("engagement_score") or 55.0)
+            prev = int(state.get("previous_successful_recoveries") or 0)
+            amt = float(state.get("amount") or 0.0)
+            days = int(state.get("days_overdue") or 0)
+            z = -0.85 + 0.032 * eng + 0.42 * prev - 0.00010 * amt - 0.040 * days
+            prob = float(1.0 / (1.0 + (2.71828 ** (-z))))
 
     prob_rounded = round(float(prob), 3)
     state["recovery_probability"] = prob_rounded

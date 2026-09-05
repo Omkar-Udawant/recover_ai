@@ -37,11 +37,24 @@ async def predict_recovery_probability(
     model = get_model()
     features = extract_features(payload.model_dump())
 
+    prob = None
     if model is not None:
         # Inference via trained XGBoost model
-        prob = float(model.predict_proba(features.reshape(1, -1))[0, 1])
-    else:
-        # Heuristic fallback if model artifact is not loaded
+        try:
+            prob = float(model.predict_proba(features.reshape(1, -1))[0, 1])
+        except Exception:
+            prob = None
+    if prob is None:
+        # Identical-tree inference without the xgboost stack (serverless-safe)
+        try:
+            from app.ml import xgb_lite
+            from app.ml.features import FEATURE_NAMES
+            if xgb_lite.is_available():
+                prob = float(xgb_lite.predict_proba_row(list(features), FEATURE_NAMES))
+        except Exception:
+            prob = None
+    if prob is None:
+        # Heuristic fallback if no model artifact is usable
         z = (
             -0.85
             + 0.032 * payload.engagement_score
