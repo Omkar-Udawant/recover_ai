@@ -20,27 +20,42 @@ export const apiClient = axios.create({
   },
 });
 
+// Single-flight demo login: concurrent requests share one login call instead
+// of racing N logins against each other.
+let loginPromise: Promise<string | null> | null = null;
+
+async function ensureDemoToken(): Promise<string | null> {
+  if (typeof window === "undefined") return null;
+  const existing = window.localStorage.getItem("recoverai_demo_token");
+  if (existing) return existing;
+  if (!loginPromise) {
+    loginPromise = axios
+      .post(`${API_BASE}/api/v1/auth/login`, {
+        email: "demo@recoverai.local",
+        password: "RecoverAI-local-demo-2026",
+      })
+      .then((res) => {
+        const token = (res.data as { access_token?: string })?.access_token ?? null;
+        if (token) window.localStorage.setItem("recoverai_demo_token", token);
+        return token;
+      })
+      .catch(() => null)
+      .finally(() => {
+        loginPromise = null;
+      });
+  }
+  return loginPromise;
+}
+
 apiClient.interceptors.request.use(async (config) => {
   if (typeof window !== "undefined") {
-    // 1. Check demo token
-    let demoToken = window.localStorage.getItem("recoverai_demo_token");
-    if (!demoToken && !supabase) {
-      try {
-        const res = await axios.post(`${API_BASE}/api/v1/auth/login`, {
-          email: "demo@recoverai.local",
-          password: "RecoverAI-local-demo-2026",
-        });
-        demoToken = res.data?.access_token;
-        if (demoToken) {
-          window.localStorage.setItem("recoverai_demo_token", demoToken);
-        }
-      } catch {
-        // ignore
+    // 1. Check demo token (single-flight login when missing and no Supabase)
+    if (!supabase) {
+      const demoToken = await ensureDemoToken();
+      if (demoToken) {
+        config.headers.Authorization = `Bearer ${demoToken}`;
+        return config;
       }
-    }
-    if (demoToken) {
-      config.headers.Authorization = `Bearer ${demoToken}`;
-      return config;
     }
 
     // 2. Check supabase session
@@ -61,7 +76,23 @@ apiClient.interceptors.request.use(async (config) => {
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
-    if (typeof window !== "undefined" && error.response?.status === 401) {
+    const original = error.config as (typeof error.config & { _retried?: boolean }) | undefined;
+    // One retry: drop a possibly stale token, re-login once, replay the request.
+    if (
+      typeof window !== "undefined" &&
+      error.response?.status === 401 &&
+      original &&
+      !original._retried &&
+      !supabase
+    ) {
+      original._retried = true;
+      window.localStorage.removeItem("recoverai_demo_token");
+      const token = await ensureDemoToken();
+      if (token) {
+        original.headers = { ...(original.headers || {}), Authorization: `Bearer ${token}` };
+        return apiClient.request(original);
+      }
+    } else if (typeof window !== "undefined" && error.response?.status === 401) {
       window.localStorage.removeItem("recoverai_demo_token");
     }
     return Promise.reject(error);

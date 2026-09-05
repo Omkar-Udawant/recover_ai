@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api-client";
 import { AgentRunResponse, CaseDetailResponse } from "@/lib/types";
 import { toast } from "sonner";
@@ -43,6 +44,11 @@ export function WorkbenchInspector({
   const [agentTone, setAgentTone] = useState<string>("friendly");
   const [runningAgent, setRunningAgent] = useState(false);
   const [agentResult, setAgentResult] = useState<AgentRunResponse | null>(null);
+  const [emailTo, setEmailTo] = useState<string>("");
+  const [emailBusy, setEmailBusy] = useState(false);
+  const [voiceLang, setVoiceLang] = useState<string>("Hinglish");
+  const [voiceBusy, setVoiceBusy] = useState(false);
+  const [voiceScript, setVoiceScript] = useState<string | null>(null);
 
   const fetchDetail = async () => {
     if (!caseId) return;
@@ -50,6 +56,7 @@ export function WorkbenchInspector({
     try {
       const res = await api.getCaseDetail(caseId);
       setDetail(res);
+      if (res.customer?.email) setEmailTo(res.customer.email);
     } catch {
       toast.error("Failed to load case detail");
     } finally {
@@ -60,11 +67,64 @@ export function WorkbenchInspector({
   useEffect(() => {
     if (caseId) {
       setAgentResult(null);
+      setVoiceScript(null);
       fetchDetail();
     }
   }, [caseId]);
 
   if (!caseId) return null;
+
+  const isActed = (d?: string | null) => d === "acted" || d === "act";
+
+  const speak = (text: string, lang: string) => {
+    try {
+      const synth = window.speechSynthesis;
+      synth.cancel();
+      const utter = new SpeechSynthesisUtterance(text);
+      const voices = synth.getVoices();
+      const match =
+        voices.find((v) => (lang === "Hinglish" ? v.lang.startsWith("hi") : v.lang.startsWith("en"))) ??
+        voices.find((v) => v.lang.startsWith("en"));
+      if (match) utter.voice = match;
+      utter.lang = lang === "Hinglish" ? "hi-IN" : "en-IN";
+      utter.rate = 0.95;
+      synth.speak(utter);
+    } catch {
+      toast.error("Audio playback failed");
+    }
+  };
+
+  const handleSendEmail = async () => {
+    if (!caseId) return;
+    setEmailBusy(true);
+    try {
+      const res = await api.sendEmail({ case_id: caseId, tone: agentTone, to_email: emailTo || undefined });
+      toast.success(`Email sent to ${res.to}`);
+      fetchDetail();
+      onCaseUpdated?.();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || "Email send failed");
+    } finally {
+      setEmailBusy(false);
+    }
+  };
+
+  const handleVoice = async () => {
+    if (!caseId) return;
+    setVoiceBusy(true);
+    try {
+      const res = await api.logVoice({ case_id: caseId, lang: voiceLang });
+      setVoiceScript(res.script);
+      speak(res.script, res.lang);
+      toast.success(`Voice attempt logged · ${res.template} · ₹${(res.cost_paise / 100).toFixed(2)}`);
+      fetchDetail();
+      onCaseUpdated?.();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.detail || "Voice log failed");
+    } finally {
+      setVoiceBusy(false);
+    }
+  };
 
   const handleRunAgent = async () => {
     setRunningAgent(true);
@@ -76,9 +136,9 @@ export function WorkbenchInspector({
       });
       setAgentResult(res);
       toast.success(
-        res.decision === "refuse"
-          ? `Intervention Refused: ${res.refusal_reason || "Policy threshold"}`
-          : "8-Agent Pipeline executed and intervention logged."
+        isActed(res.decision)
+          ? "8-Agent Pipeline executed and intervention logged."
+          : `Intervention Refused: ${res.refusal_reason || "Policy threshold"}`
       );
       fetchDetail();
       onCaseUpdated?.();
@@ -253,17 +313,59 @@ export function WorkbenchInspector({
                   </Button>
                 </div>
 
+                {/* Real outreach: email + voice */}
+                <div className="space-y-2 pt-2 border-t border-border">
+                  <div className="text-muted-foreground text-[10px] uppercase">Real outreach</div>
+                  <div className="flex items-center gap-1.5">
+                    <Input
+                      type="email"
+                      value={emailTo}
+                      onChange={(e) => setEmailTo(e.target.value)}
+                      placeholder="recipient email"
+                      className="h-7 text-[11px] font-mono"
+                    />
+                    <Button variant="outline" size="xs" onClick={handleSendEmail} disabled={emailBusy}>
+                      <Mail className="h-3 w-3 mr-1" />
+                      {emailBusy ? "Sending…" : "Send email"}
+                    </Button>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <select
+                      value={voiceLang}
+                      onChange={(e) => setVoiceLang(e.target.value)}
+                      className="h-7 rounded border border-border bg-background px-2 text-[11px] font-mono text-foreground outline-none"
+                    >
+                      <option value="EN">EN</option>
+                      <option value="Hinglish">Hinglish</option>
+                    </select>
+                    <Button variant="outline" size="xs" onClick={handleVoice} disabled={voiceBusy}>
+                      <Phone className="h-3 w-3 mr-1" />
+                      {voiceBusy ? "Logging…" : "Hear + log call"}
+                    </Button>
+                    {voiceScript && (
+                      <Button variant="ghost" size="xs" onClick={() => speak(voiceScript, voiceLang)}>
+                        Replay
+                      </Button>
+                    )}
+                  </div>
+                  {voiceScript && (
+                    <div className="p-2 rounded border-l-2 border-emerald-500 bg-secondary/40 font-mono text-[10px] leading-relaxed text-muted-foreground">
+                      {voiceScript}
+                    </div>
+                  )}
+                </div>
+
                 {/* Result Display */}
                 {agentResult && (
                   <div className="p-3.5 rounded-lg border border-border bg-secondary/30 space-y-2 text-[11px]">
                     <div className="flex items-center justify-between">
                       <span className="font-bold uppercase text-[10px] text-muted-foreground">Execution Outcome</span>
-                      <Badge variant={agentResult.decision === "act" ? "settled" : "refused"}>
-                        {agentResult.decision === "act" ? "Act Dispatched" : "Refused by Policy"}
+                      <Badge variant={isActed(agentResult.decision) ? "settled" : "refused"}>
+                        {isActed(agentResult.decision) ? "Act Dispatched" : "Refused by Policy"}
                       </Badge>
                     </div>
 
-                    {agentResult.decision === "refuse" && (
+                    {!isActed(agentResult.decision) && (
                       <div className="text-rose-700 dark:text-rose-300 font-sans text-xs">
                         Refusal Reason: {agentResult.refusal_reason || "Expected value below minimum floor"}
                       </div>
@@ -279,19 +381,31 @@ export function WorkbenchInspector({
                     )}
 
                     {agentResult.payment_link && (
-                      <div className="flex items-center justify-between pt-1">
-                        <span className="text-muted-foreground">Razorpay Link:</span>
-                        <Button
-                          variant="outline"
-                          size="xs"
-                          onClick={() => {
-                            navigator.clipboard.writeText(agentResult.payment_link);
-                            toast.success("Payment link copied");
-                          }}
-                        >
-                          <Copy className="h-3 w-3 mr-1" />
-                          Copy Link
-                        </Button>
+                      <div className="space-y-1.5 pt-1">
+                        <div className="truncate font-mono text-[10px] text-emerald-600 dark:text-emerald-400">
+                          {agentResult.payment_link}
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-muted-foreground">Razorpay Link:</span>
+                          <div className="flex-1" />
+                          <Button
+                            variant="outline"
+                            size="xs"
+                            onClick={() => {
+                              navigator.clipboard.writeText(agentResult.payment_link);
+                              toast.success("Payment link copied");
+                            }}
+                          >
+                            <Copy className="h-3 w-3 mr-1" />
+                            Copy Link
+                          </Button>
+                          <a href={agentResult.payment_link} target="_blank" rel="noreferrer">
+                            <Button variant="outline" size="xs">
+                              <ExternalLink className="h-3 w-3 mr-1" />
+                              Open Link
+                            </Button>
+                          </a>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -328,7 +442,29 @@ export function WorkbenchInspector({
             {/* TAB 3: Audit Trail */}
             {activeTab === "audit" && (
               <div className="space-y-2 font-mono text-[11px]">
-                {detail.audit_logs?.length === 0 ? (
+                <div className="text-muted-foreground text-[10px] uppercase">Outreach ledger ({detail.actions?.length || 0})</div>
+                {(detail.actions || []).map((act) => (
+                  <div key={act.id} className="p-2.5 rounded border border-border bg-secondary/30 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-foreground capitalize">{act.channel || "unknown"} · {act.action_status}</span>
+                      <span className="text-[10px] text-muted-foreground">{new Date(act.created_at).toLocaleString()}</span>
+                    </div>
+                    {act.message_content && (
+                      <div className="text-muted-foreground leading-relaxed break-words">{act.message_content.slice(0, 220)}{act.message_content.length > 220 ? "…" : ""}</div>
+                    )}
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {act.template && <span className="px-1.5 py-0.5 rounded border border-border">{act.template}</span>}
+                      {act.lang && <span className="px-1.5 py-0.5 rounded-full border border-emerald-600/40 text-emerald-600 dark:text-emerald-400">{act.lang}</span>}
+                      {act.cost_paise != null && <span>₹{(act.cost_paise / 100).toFixed(2)}</span>}
+                      {act.payment_link && (
+                        <a href={act.payment_link} target="_blank" rel="noreferrer" className="inline-flex items-center gap-0.5 text-emerald-600 dark:text-emerald-400 hover:underline">
+                          <ExternalLink className="h-2.5 w-2.5" /> open link
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                <div className="text-muted-foreground text-[10px] uppercase pt-1">Policy events ({detail.audit_logs?.length || 0})</div>
                   <div className="p-4 text-center text-muted-foreground">No ledger events recorded.</div>
                 ) : (
                   detail.audit_logs.map((log) => (
