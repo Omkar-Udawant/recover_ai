@@ -75,11 +75,43 @@ class LogVoiceRequest(BaseModel):
 async def _latest_payment_link(db: AsyncSession, case_id: uuid.UUID) -> str:
     res = await db.execute(
         select(RecoveryAction.payment_link)
-        .where(RecoveryAction.case_id == case_id, RecoveryAction.payment_link.isnot(None))
+        .where(
+            RecoveryAction.case_id == case_id,
+            RecoveryAction.payment_link.isnot(None),
+            RecoveryAction.payment_link != "",
+        )
         .order_by(desc(RecoveryAction.created_at))
         .limit(1)
     )
     return res.scalar_one_or_none() or ""
+
+
+async def _mint_fresh_link(db: AsyncSession, case: RecoveryCase, customer_name: str, customer_email: str, customer_phone: str = "+91 9999999999") -> str:
+    """Mint a live Razorpay link for the email so demos never carry stale URLs."""
+    from app.integrations.razorpay_client import create_payment_link
+    from app.models.intelligence import PaymentAttempt
+
+    result = create_payment_link(
+        amount=float(case.amount or 0.0),
+        currency="INR",
+        customer_name=customer_name,
+        customer_email=customer_email,
+        customer_phone=customer_phone,
+        description=f"RecoverAI recovery case {case.id}",
+    )
+    db.add(
+        PaymentAttempt(
+            id=uuid.uuid4(),
+            case_id=case.id,
+            razorpay_link_id=result["id"],
+            razorpay_order_id=result.get("order_id"),
+            amount=float(case.amount or 0.0),
+            currency="INR",
+            payment_status=result["status"],
+            short_url=result["short_url"],
+        )
+    )
+    return result["short_url"]
 
 
 @router.post("/send-email")
@@ -107,6 +139,16 @@ async def send_email(
     name = customer.name if customer else "Valued Customer"
     amount = float(case.amount or 0.0)
     link = await _latest_payment_link(db, case_uuid)
+    if not link:
+        # No usable stored link: mint a fresh live one so the email is actionable.
+        # Raises honest 503/502 when Razorpay is unreachable — never fabricated.
+        try:
+            link = await _mint_fresh_link(
+                db, case, name, to_email if "@" in (to_email or "") else "customer@example.com",
+                customer.phone if customer and customer.phone else "+91 9999999999",
+            )
+        except HTTPException:
+            link = ""
     subject, body = build_recovery_email(name, amount, "INR", link, payload.tone)
     result = send_recovery_email(to_email=to_email, subject=subject, body_text=body)
     now = datetime.now(timezone.utc)

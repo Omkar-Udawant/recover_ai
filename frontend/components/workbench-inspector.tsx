@@ -465,9 +465,10 @@ export function WorkbenchInspector({
                   </div>
                 ))}
                 <div className="text-muted-foreground text-[10px] uppercase pt-1">Policy events ({detail.audit_logs?.length || 0})</div>
+                {(detail.audit_logs?.length || 0) === 0 ? (
                   <div className="p-4 text-center text-muted-foreground">No ledger events recorded.</div>
                 ) : (
-                  detail.audit_logs.map((log) => (
+                  (detail.audit_logs || []).map((log) => (
                     <div key={log.id} className="p-2.5 rounded border border-border bg-secondary/30 space-y-0.5">
                       <div className="flex items-center justify-between font-bold text-foreground">
                         <span>{log.action}</span>
