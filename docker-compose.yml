@@ -41,6 +41,8 @@ services:
       - SMTP_USER=${SMTP_USER:-}
       - SMTP_PASS=${SMTP_PASS:-}
       - SMTP_FROM_NAME=${SMTP_FROM_NAME:-RecoverAI}
+      - BACKEND_CORS_ORIGINS=${BACKEND_CORS_ORIGINS:-}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-3.8-flash}
       - RATE_LIMIT_PER_MINUTE=${RATE_LIMIT_PER_MINUTE:-120}
       - ENVIRONMENT=development
       - LOG_LEVEL=INFO
