@@ -1,94 +1,77 @@
 "use client";
 
+import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bot, FileText, Layers, LayoutDashboard, ShieldCheck, Zap } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/lib/supabase";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { cn } from "@/lib/utils";
+import { ArrowRight, Layers, LayoutDashboard, ShieldCheck } from "lucide-react";
 
 export function Navbar() {
   const pathname = usePathname();
 
   const links = [
-    { href: "/", label: "Home", icon: Bot },
-    { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
-    { href: "/cases", label: "Cases", icon: Layers },
-    { href: "/policy", label: "Policy", icon: ShieldCheck },
+    { href: "/", label: "Overview" },
+    { href: "/dashboard", label: "Terminal", icon: LayoutDashboard },
+    { href: "/cases", label: "Case Ledger", icon: Layers },
+    { href: "/policy", label: "Guardrails", icon: ShieldCheck },
   ];
-  const signOut = async () => {
-    try { window.localStorage.removeItem("recoverai_demo_token"); } catch { /* noop */ }
-    await supabase?.auth.signOut();
-    window.location.assign("/login");
-  };
 
   return (
-    <header className="border-b border-slate-800 bg-slate-950/85 backdrop-blur-md sticky top-0 z-50">
-      <div className="container mx-auto flex h-16 items-center justify-between px-4 sm:px-6">
-        <div className="flex items-center space-x-6">
-          <Link href="/" className="flex items-center space-x-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600/20 border border-blue-500/30 text-blue-400">
-              <Bot className="h-5 w-5" />
+    <header className="sticky top-0 z-40 w-full border-b border-border bg-background/95 backdrop-blur-sm">
+      <div className="container mx-auto flex h-14 items-center justify-between px-4 sm:px-6 max-w-7xl">
+        <div className="flex items-center gap-6">
+          <Link href="/" className="flex items-center gap-2">
+            <div className="flex h-6 w-6 items-center justify-center rounded-[4px] bg-emerald-600 text-white font-mono font-bold text-xs">
+              R
             </div>
-            <div className="flex items-baseline space-x-1.5">
-              <span className="text-lg font-bold tracking-tight text-white">
-                Recover<span className="text-blue-500">AI</span>
-              </span>
-              <span className="text-xs text-slate-500 font-mono">v1.0</span>
-            </div>
+            <span className="font-bold text-sm tracking-tight text-foreground font-sans">
+              Recover<span className="text-emerald-600 dark:text-emerald-400">AI</span>
+            </span>
           </Link>
 
-          <nav className="hidden md:flex items-center space-x-1">
+          <nav className="hidden md:flex items-center gap-1 font-mono text-xs">
             {links.map((link) => {
-              const Icon = link.icon;
               const isActive = pathname === link.href;
               return (
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  className={cn(
+                    "px-3 py-1.5 rounded-[4px] transition-colors",
                     isActive
-                      ? "bg-slate-800 text-white"
-                      : "text-slate-400 hover:text-slate-200 hover:bg-slate-900"
-                  }`}
+                      ? "bg-secondary text-foreground font-semibold"
+                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                  )}
                 >
-                  <Icon className="h-4 w-4" />
-                  <span>{link.label}</span>
+                  {link.label}
                 </Link>
               );
             })}
           </nav>
         </div>
 
-        <div className="flex items-center space-x-3">
-          <Badge variant="success" className="hidden sm:flex items-center space-x-1 py-0.5">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span>8-Agent AI Online</span>
-          </Badge>
 
-          <Badge variant="outline" className="hidden md:inline-flex border-emerald-500/30 text-emerald-300 text-[11px] font-mono">
-            Track 03
-          </Badge>
+        <div className="flex items-center gap-2.5">
+          <ThemeToggle />
 
           <a
             href="http://localhost:8000/docs"
             target="_blank"
             rel="noreferrer"
-            className="hidden sm:inline-flex"
+            className="hidden sm:inline-flex text-xs font-mono text-muted-foreground hover:text-foreground px-2 py-1"
           >
-            <Button variant="outline" size="sm" className="border-slate-800 text-xs text-slate-300">
-              <FileText className="h-3.5 w-3.5 mr-1" />
-              API Docs
-            </Button>
+            API Docs
           </a>
 
-          <Link href="/cases">
-            <Button size="sm" className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs shadow-md shadow-emerald-600/20">
-              <Zap className="h-3.5 w-3.5 mr-1" />
-              Live Cases
+
+          <Link href="/dashboard">
+            <Button size="sm" className="font-mono text-xs h-8">
+              Launch Terminal
+              <ArrowRight className="ml-1.5 h-3 w-3" />
             </Button>
           </Link>
-          <Button onClick={signOut} variant="outline" size="sm" className="border-slate-800 text-xs text-slate-300">Logout</Button>
         </div>
       </div>
     </header>

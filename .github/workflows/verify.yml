@@ -8,6 +8,10 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
       - working-directory: backend
+        env:
+          DEMO_AUTH_ENABLED: "true"
+          DEMO_MERCHANT_EMAIL: "admin@recoverai.com"
+          DEMO_MERCHANT_PASSWORD: "password123"
         run: |
           pip install -e .[dev]
           ruff check app || true
@@ -21,5 +25,6 @@ jobs:
         with: { node-version: "20" }
       - working-directory: frontend
         run: |
-          npm ci || npm install
+          npm install --legacy-peer-deps
           npx tsc --noEmit
+

@@ -17,6 +17,6 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
     });
     return () => listener.subscription.unsubscribe();
   }, [router]);
-  if (!ready) return <main className="min-h-screen bg-slate-950 grid place-items-center text-slate-300">Loading secure session…</main>;
+  if (!ready) return <main className="min-h-screen bg-background grid place-items-center text-muted-foreground font-mono text-xs">Loading session…</main>;
   return <>{children}</>;
 }

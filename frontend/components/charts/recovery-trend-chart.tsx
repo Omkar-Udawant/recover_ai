@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import {
   Area,
   AreaChart,
@@ -18,7 +19,7 @@ interface RecoveryTrendChartProps {
 export function RecoveryTrendChart({ data }: RecoveryTrendChartProps) {
   if (!data || data.length === 0) {
     return (
-      <div className="flex h-64 items-center justify-center text-sm text-slate-500">
+      <div className="flex h-64 items-center justify-center text-xs font-mono text-slate-500">
         No trend data available
       </div>
     );
@@ -34,48 +35,56 @@ export function RecoveryTrendChart({ data }: RecoveryTrendChartProps) {
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart
           data={formattedData}
-          margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+          margin={{ top: 10, right: 10, left: -10, bottom: 0 }}
         >
           <defs>
             <linearGradient id="recoveredGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#10b981" stopOpacity={0.4} />
-              <stop offset="95%" stopColor="#10b981" stopOpacity={0.0} />
+              <stop offset="5%" stopColor="#10B981" stopOpacity={0.4} />
+              <stop offset="95%" stopColor="#10B981" stopOpacity={0.0} />
             </linearGradient>
             <linearGradient id="lostGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.3} />
-              <stop offset="95%" stopColor="#f43f5e" stopOpacity={0.0} />
+              <stop offset="5%" stopColor="#F43F5E" stopOpacity={0.25} />
+              <stop offset="95%" stopColor="#F43F5E" stopOpacity={0.0} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" className="dark:stroke-white/[0.08]" vertical={false} />
           <XAxis
             dataKey="shortDate"
-            stroke="#64748b"
-            fontSize={11}
+            stroke="#94a3b8"
+            fontSize={10}
+            fontFamily="monospace"
             tickLine={false}
             axisLine={false}
           />
           <YAxis
-            stroke="#64748b"
-            fontSize={11}
+            stroke="#94a3b8"
+            fontSize={10}
+            fontFamily="monospace"
             tickLine={false}
             axisLine={false}
             tickFormatter={(val) => `₹${(val / 1000).toFixed(0)}k`}
           />
           <Tooltip
             contentStyle={{
-              backgroundColor: "#0f172a",
-              borderColor: "#334155",
+              backgroundColor: "var(--card, #ffffff)",
+              borderColor: "var(--border, #e2e8f0)",
               borderRadius: "0.5rem",
-              fontSize: "12px",
-              color: "#f8fafc",
+              boxShadow: "0 4px 16px rgba(0, 0, 0, 0.08)",
+              fontSize: "11px",
+              color: "var(--foreground, #0f172a)",
             }}
-            formatter={(value: any) => [`₹${Number(value).toLocaleString("en-IN")}`, ""]}
+            itemStyle={{ color: "var(--foreground, #0f172a)" }}
+            labelStyle={{ color: "var(--foreground, #0f172a)", fontWeight: 600 }}
+            formatter={(value: any, name: any) => [
+              `₹${Number(value).toLocaleString("en-IN")}`,
+              name === "recovered_amount" ? "Recovered Won Back" : "Lost Unrecovered",
+            ]}
           />
           <Area
             type="monotone"
             dataKey="recovered_amount"
-            name="Recovered"
-            stroke="#10b981"
+            name="recovered_amount"
+            stroke="#10B981"
             strokeWidth={2}
             fillOpacity={1}
             fill="url(#recoveredGrad)"
@@ -83,9 +92,10 @@ export function RecoveryTrendChart({ data }: RecoveryTrendChartProps) {
           <Area
             type="monotone"
             dataKey="lost_amount"
-            name="Lost"
-            stroke="#f43f5e"
-            strokeWidth={2}
+            name="lost_amount"
+            stroke="#F43F5E"
+            strokeWidth={1.5}
+            strokeDasharray="4 4"
             fillOpacity={1}
             fill="url(#lostGrad)"
           />

@@ -16,8 +16,9 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+# backend python libs
+/backend/lib/
+/backend/lib64/
 parts/
 sdist/
 var/
@@ -48,6 +49,7 @@ pnpm-debug.log*
 out/
 build/
 .vercel
+*.tsbuildinfo
 
 # Database & Data
 *.sqlite3
