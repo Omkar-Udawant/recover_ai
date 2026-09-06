@@ -21,6 +21,19 @@ async def app(scope, receive, send):
     the original path before FastAPI routing (otherwise everything 404s)."""
     if scope.get("type") == "http":
         path = scope.get("path") or ""
+        qs = (scope.get("query_string") or b"").decode("latin-1", "replace")
+        if "showscope" in qs:
+            raw = scope.get("raw_path")
+            info = {
+                "path": path,
+                "raw_path": raw.decode("latin-1") if isinstance(raw, (bytes, bytearray)) else raw,
+                "root_path": scope.get("root_path"),
+                "method": scope.get("method"),
+                "query_string": qs,
+                "headers": {k.decode("latin-1"): v.decode("latin-1") for k, v in scope.get("headers", [])},
+            }
+            await JSONResponse(info)(scope, receive, send)
+            return
         if path.rstrip("/").endswith("/__debug"):
             raw = scope.get("raw_path")
             info = {
