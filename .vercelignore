@@ -1,5 +1,4 @@
 # Keep the serverless function lean: deploy API code + model only.
-frontend/
 data/
 docs/
 infra/
